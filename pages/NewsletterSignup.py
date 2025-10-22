@@ -1,6 +1,6 @@
 import streamlit as st
-import base64
 import re
+import base64
 
 def get_base64_of_bin_file(image_path):
     with open(image_path, "rb") as f:
@@ -55,20 +55,14 @@ def set_background_for_theme(selected_palette="pink"):
             color: {'black' if is_dark else 'rgba(49, 51, 63, 0.8)'} ;  /* Adjusted for light background */
         }}
 
+        span {{
+            color: {'#f0f0f0' if is_dark else 'rgba(49, 51, 63, 0.8)'} !important;
+            transition: color 0.3s ease;
+        }}
+
         /* Header bar: fully transparent */
         [data-testid="stHeader"] {{
             background-color: rgba(0, 0, 0, 0);
-        }}
-        
-        h1 {{
-            color: rgb(214, 51, 108) !important;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }}
-
-        h2, h3, h4, h5, h6,
-        p, span, strong, div, label {{
-            color: {'#f0f0f0' if is_dark else 'rgba(49, 51, 63, 0.8)'} !important;
-            transition: color 0.3s ease;
         }}
 
         /* Hide left/right arrow at sidebar bottom */
@@ -87,49 +81,122 @@ set_background_for_theme(selected_palette)
 
 def newsletter_signup_form():
     """Displays the newsletter signup form and handles submission."""
-    
-    # Regex for basic email validation
+
     EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
+    # Custom CSS styling
     st.markdown("""
-        <div style='background: linear-gradient(135deg, #ffe4f0 0%, #fff 100%); border-radius: 18px; box-shadow: 0 2px 18px 0 rgba(209,74,122,0.12); padding: 2.5rem; margin: 2rem auto; max-width: 900px;'>
-            <h2 style='color: #d14a7a; font-family: "Baloo 2", cursive;'>Subscribe to Our Weekly Newsletter</h2>
-            <p style='color: #222; font-size: 1.1rem;'>
-                Get the latest wellness tips, mental health news, and exclusive content delivered straight to your inbox!
-                <br><br>
-                <b>Sign up below to join our community:</b>
-            </p>
-        </div>
+        <style>
+        .newsletter-container {
+            text-align: center;
+            padding: 2rem 1rem;
+            background: linear-gradient(135deg, #fceff9 0%, #ffffff 100%);
+            border-radius: 18px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .newsletter-container h1 {
+            color: #d63384;
+            font-family: 'Baloo 2', cursive;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .newsletter-container p {
+            color: #333;
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+
+        .newsletter-card {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .newsletter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        </style>
     """, unsafe_allow_html=True)
 
-    with st.form(key="newsletter_form"):
-        email = st.text_input("Email Address", placeholder="Enter your email", key="newsletter_email")
-        submit = st.form_submit_button("Subscribe", help="Sign up for our newsletter")
-        
-        if submit:
-            if email and re.match(EMAIL_REGEX, email):
-                # In a real app, you would save the email to a database here.
-                st.success("Thank you for subscribing! You'll receive our next newsletter soon.")
-                st.balloons()
-            else:
-                st.error("Please enter a valid email address.")
-    
-    st.markdown("<p style='text-align: center; color: #ff0a54; font-size: 0.9rem;'>We respect your privacy and will never share your email.</p>", unsafe_allow_html=True)
+    # Container for the header and form
+    with st.container():
+        st.markdown("""
+            <div class="newsletter-container">
+                <h1>💌 Subscribe to Our Weekly Newsletter</h1>
+                <p>Get the latest wellness tips, mental health news, and exclusive content delivered to your inbox!</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        with st.form(key="newsletter_form", clear_on_submit=True):
+            email = st.text_input("Email Address", placeholder="Enter your email")
+            submit = st.form_submit_button("Subscribe")
+
+            if submit:
+                if email and re.match(EMAIL_REGEX, email):
+                    st.success("✅ Thank you for subscribing! You'll receive our next newsletter soon.")
+                    st.balloons()
+                    st.session_state.subscribed = True
+                else:
+                    st.error("⚠️ Please enter a valid email address.")
+
+        # st.markdown("<p style='text-align: center; color: #888; font-size: 0.9rem;'>We respect your privacy and will never share your email.</p>", unsafe_allow_html=True)
+        st.info("🔒 We respect your privacy and will never share your email.")
 
 def show():
     """Renders the Newsletter Signup page."""
-    st.title("Newsletter Signup")
-    
-    # Check if the user has already subscribed in this session
+    # st.title("📰 Newsletter Signup")
+
+    # Session state check
     if 'subscribed' not in st.session_state:
         st.session_state.subscribed = False
 
     if st.session_state.subscribed:
-        st.success("You are already subscribed! Thank you for being a part of our community.")
+        st.success("🎉 You are already subscribed! Thank you for being a part of our community.")
         st.markdown("---")
         st.page_link("app.py", label="Back to Home", icon="🏠")
     else:
         newsletter_signup_form()
+
+    st.divider()
+    st.subheader("📖 Past Newsletters")
+
+    past_newsletters = [
+        {
+            "title": "Mindful Mondays: The Power of Breath",
+            "date": "October 6, 2025",
+            "summary": "This week, we explore the power of mindful breathing and how it can help you stay calm and centered throughout the day. We also share a simple breathing exercise that you can do anywhere, anytime."
+        },
+        {
+            "title": "Wellness Wednesdays: The Importance of Sleep",
+            "date": "September 29, 2025",
+            "summary": "In this issue, we dive into the science of sleep and why it's so crucial for your mental and physical health. We also provide some tips for getting a better night's sleep."
+        },
+        {
+            "title": "Feel-Good Fridays: The Benefits of Gratitude",
+            "date": "September 22, 2025",
+            "summary": "This week, we focus on the power of gratitude and how it can improve your mood and overall well-being. We also share a simple gratitude journaling exercise."
+        }
+    ]
+
+    cols = st.columns(2)
+    for i, newsletter in enumerate(past_newsletters):
+        with cols[i % 2]:
+            st.markdown(f"""
+                <div class="newsletter-card">
+                    <h4>{newsletter['title']}</h4>
+                    <p><em>{newsletter['date']}</em></p>
+                    <p>{newsletter['summary']}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
 # To run the page
 if __name__ == "__main__":

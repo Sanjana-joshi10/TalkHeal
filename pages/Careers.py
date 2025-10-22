@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+from datetime import datetime
 import base64
 
 def get_base64_of_bin_file(image_path):
@@ -53,7 +55,7 @@ def set_background_for_theme(selected_palette="pink"):
             background-color: rgba(255, 255, 255, 0.6);  /* Brighter and translucent */
             color: {'black' if is_dark else 'rgba(49, 51, 63, 0.8)'} ;  /* Adjusted for light background */
         }}
-        
+
         span {{
             color: {'#f0f0f0' if is_dark else 'rgba(49, 51, 63, 0.8)'} !important;
             transition: color 0.3s ease;
@@ -79,23 +81,120 @@ selected_palette = st.session_state.get("palette_name", "Pink")
 set_background_for_theme(selected_palette)
 
 def show():
+    # --- Inject custom CSS for consistent layout ---
     st.markdown("""
-        <div style='background: linear-gradient(135deg, #ffe4f0 0%, #fff 100%); border-radius: 18px; box-shadow: 0 2px 18px 0 rgba(209,74,122,0.12); padding: 2.5rem 2.5rem 2rem 2.5rem; margin: 2rem auto; max-width: 900px;'>
-            <h2 style='color: #d14a7a; font-family: Baloo 2, cursive;'>Careers at TalkHeal</h2>
-            <div style='color: #000; font-size: 1.1rem;'>
-                Join our mission to support mental wellness!<br><br>
-                <b>Current Openings:</b><br>
-                <ul>
-                    <li>Community Manager</li>
-                    <li>Content Writer (Mental Health)</li>
-                    <li>Full Stack Developer</li>
-                    <li>UI/UX Designer</li>
-                </ul>
-                <br>
-                If you are passionate about mental health and want to make a difference, send your resume to <a href='mailto:careers@talkheal.com'>careers@talkheal.com</a>.<br><br>
-                <i>More roles and details coming soon!</i>
-            </div>
-        </div>
+    <style>
+    .main-container {
+        padding: 1rem;
+    }
+
+    .career-container {
+        text-align: center;
+        padding: 2rem 1rem;
+        background: linear-gradient(135deg, #e6f0ff 0%, #fff 100%);
+        border-radius: 18px;
+        margin-bottom: 2rem;
+    }
+
+    .career-container h1 {
+        color: #2563eb;
+        font-family: 'Baloo 2', cursive;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    .career-container p {
+        color: #333;
+        font-size: 1.2rem;
+        font-style: italic;
+    }
+
+    .opening-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        color: #31333F;
+    }
+
+    .opening-item span {
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
+    # --- Careers Header Section ---
+    with st.container():
+        st.markdown("""
+        <div class="career-container">
+            <h1>🚀 Careers at TalkHeal</h1>
+            <p>Join our mission to support mental wellness and make a real impact!</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # --- Job Listings ---
+    st.subheader("📌 Current Openings")
+
+    openings = {
+        "Community Manager": "🤝",
+        "Content Writer (Mental Health)": "✍️",
+        "Full Stack Developer": "💻",
+        "UI/UX Designer": "🎨"
+    }
+
+    for role, icon in openings.items():
+        st.markdown(f"<div class='opening-item'><span>{icon}</span>{role}</div>", unsafe_allow_html=True)
+
+    st.divider()
+
+    # --- Application Form ---
+    st.subheader("📄 Apply Now")
+
+    with st.form("application_form", clear_on_submit=True):
+        name = st.text_input("Full Name")
+        email = st.text_input("Email Address")
+        position = st.selectbox("Position", options=list(openings.keys()))
+        resume = st.file_uploader("Upload Your Resume", type=["pdf", "docx"])
+        cover_letter = st.text_area("Cover Letter (Optional)")
+
+        submitted = st.form_submit_button("Submit Application")
+
+        if submitted:
+            if name and email and position and resume:
+                # Save application data
+                if not os.path.exists("data/applications"):
+                    os.makedirs("data/applications")
+
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                folder_name = f"{name.replace(' ', '_')}_{timestamp}"
+                application_dir = f"data/applications/{folder_name}"
+                os.makedirs(application_dir)
+
+                # Save resume
+                with open(os.path.join(application_dir, resume.name), "wb") as f:
+                    f.write(resume.getbuffer())
+
+                # Save other details
+                with open(os.path.join(application_dir, "application.txt"), "w") as f:
+                    f.write(f"Name: {name}\n")
+                    f.write(f"Email: {email}\n")
+                    f.write(f"Position: {position}\n")
+                    f.write(f"Cover Letter:\n{cover_letter}")
+
+                st.success("🎉 Your application has been submitted successfully!")
+            else:
+                st.error("⚠️ Please complete all required fields.")
+
+    st.markdown("</div>", unsafe_allow_html=True) 
+
+    st.info("More roles and opportunities coming soon!")
+    
 show()

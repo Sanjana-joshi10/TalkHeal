@@ -7,40 +7,25 @@ from components.mood_dashboard import render_mood_dashboard, MoodTracker
 from components.profile import initialize_profile_state, render_profile_section
 from components.focus_session import render_focus_session
 from components.quick_coping_cards import render_quick_coping_cards
+from components.thought_reframing import render_thought_reframing
+from components.sleep_hygiene import render_sleep_hygiene_toolkit
+from components.medication_reminder import render_medication_reminder
+from components.self_compassion import render_self_compassion_tool
+from components.crisis_action_plan import render_crisis_action_plan
+from components.pomodoro_focus import render_pomodoro_focus
+from components.pmr_guide import render_pmr_guide
+from components.values_clarification import render_values_clarification
+from components.therapy_tool import render_therapy_tool
+from components.playlist_generator import render_playlist_generator
 from streamlit_js_eval import streamlit_js_eval
 import requests
 import base64
+import json
 
-def get_base64_of_bin_file(image_path):
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+def set_background(image_path):
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
 
-def set_background_for_theme(selected_palette="pink"):
-    from core.theme import get_current_theme
-
-    # --- Get current theme info ---
-    current_theme = st.session_state.get("current_theme", None)
-    if not current_theme:
-        current_theme = get_current_theme()
-    
-    is_dark = current_theme["name"] == "Dark"
-
-    # --- Map light themes to background images ---
-    palette_color = {
-        "light": "static_files/pink.png",
-        "calm blue": "static_files/blue.png",
-        "mint": "static_files/mint.png",
-        "lavender": "static_files/lavender.png",
-        "pink": "static_files/pink.png"
-    }
-
-    # --- Select background based on theme ---
-    if is_dark:
-        background_image_path = "static_files/dark.png"
-    else:
-        background_image_path = palette_color.get(selected_palette.lower(), "static_files/pink.png")
-
-    encoded_string = get_base64_of_bin_file(background_image_path)
     css = """
     <style>
     /* Entire app background */
@@ -67,11 +52,6 @@ def set_background_for_theme(selected_palette="pink"):
     [data-testid="stHeader"] {
         background-color: rgba(0, 0, 0, 0);
     }
-    
-    h1 {
-            color: rgb(214, 51, 108) !important;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
 
     /* Hide left/right arrow at sidebar bottom */
     button[title="Close sidebar"],
@@ -96,8 +76,7 @@ def set_background_for_theme(selected_palette="pink"):
 
 
 # ✅ Set your background image
-selected_palette = st.session_state.get("palette_name", "Pink")
-set_background_for_theme(selected_palette)
+set_background("static_files/lavender.png")
 
 
 # --- Structured Emergency Resources ---
@@ -158,42 +137,8 @@ def get_user_country():
 
     return None  # final fallback if everything fails
 
-country_helplines = {
-    "US": [
-        "National Suicide Prevention Lifeline: 988",
-        "Crisis Text Line: Text HOME to 741741",
-        "SAMHSA National Helpline: 1-800-662-4357"
-    ],
-    "IN": [
-        "AASRA: 9152987821",
-        "Sneha Foundation: 044-24640050"
-    ],
-    "GB": [
-        "Samaritans: 116 123",
-        "Shout 85258: Text SHOUT to 85258"
-    ],
-    "AU": [
-        "Lifeline: 13 11 14",
-        "Suicide Call Back Service: 1300 659 467"
-    ],
-    "CA": [
-        "Crisis Services Canada: 1-833-456-4566",
-        "Kids Help Phone: 1-800-668-6868"
-    ],
-    "DE": [
-        "Telefonseelsorge: 0800 1110111 or 0800 1110222"
-    ],
-    "FR": [
-        "Suicide Écoute: 01 45 39 40 00"
-    ],
-    "NZ": [
-        "Lifeline Aotearoa: 0800 543 354",
-        "Youthline: 0800 376 633"
-    ],
-    "ZA": [
-        "SADAG (South African Depression and Anxiety Group): 0800 567 567"
-    ]
-}
+with open("data/country_helplines.json", "r") as f:
+    country_helplines = json.load(f)
 
 country_names = {
     "US": "United States",
@@ -271,41 +216,96 @@ mental_health_resources_full = {
 }
 st.title("🧰 Self Help Tools")
 
-# Button states
+tools = {
+    "focus": {"name": "Focus Session", "icon": "🧘"},
+    "pomodoro": {"name": "Pomodoro Focus", "icon": "⏱️"},
+    "pmr": {"name": "Muscle Relaxation (PMR)", "icon": "🧩"},
+    "values": {"name": "Values Clarification", "icon": "🎯"},
+    "therapy": {"name": "Therapy Prep & Notes", "icon": "📈"},
+    "playlist": {"name": "Playlist Generator", "icon": "🎵"},
+    "mood_dashboard": {"name": "Mood Dashboard", "icon": "📊"},
+    "mental_check": {"name": "Mental Health Check", "icon": "🧠"},
+    "thought_reframing": {"name": "Thought Reframing (CBT)", "icon": "💭"},
+    "sleep_hygiene": {"name": "Sleep Hygiene Toolkit", "icon": "🌙"},
+    "medication_reminder": {"name": "Medication Reminder", "icon": "🔔"},
+    "self_compassion": {"name": "Self-Compassion Practice", "icon": "🌱"},
+    "crisis_plan": {"name": "Crisis Action Plan", "icon": "🆘"},
+    "knowledge": {"name": "Knowledge Base", "icon": "📚"},
+    "crisis": {"name": "Crisis Support", "icon": "☎️"},
+    "quizzes": {"name": "PsyToolkit Quizzes", "icon": "🧪"},
+    "quick_coping": {"name": "Quick Coping Cards", "icon": "🃏"},
+    "grounding_exercise": {"name": "Grounding Exercise", "icon": "🌳"},
+}
+
+# --- Initialize session state for favorites and recents ---
 if "active_tool" not in st.session_state:
     st.session_state.active_tool = ""
 
-col1, col2 = st.columns(3)[0:2]
-with col1:
-    if st.button("🧘 Focus Session", use_container_width=True):
-        st.session_state.active_tool = "focus"
-with col2:
-    if st.button("📊 Mood Dashboard", use_container_width=True):
-        st.session_state.active_tool = "mood_dashboard"
+if "recent_tools" not in st.session_state:
+    st.session_state.recent_tools = []
 
-col3, col4 = st.columns(3)[0:2]
-with col3:
-    if st.button("🧠 Mental Health Check", use_container_width=True):
-        st.session_state.active_tool = "mental_check"
-with col4:
-    if st.button("📚 Knowledge Base", use_container_width=True):
-        st.session_state.active_tool = "knowledge"
 
-col5, col6 = st.columns(3)[0:2]
-with col5:
-    if st.button("☎️ Crisis Support", use_container_width=True):
-        st.session_state.active_tool = "crisis"
-with col6:
-    if st.button("🧪 PsyToolkit Quizzes", use_container_width=True):
-        st.session_state.active_tool = "quizzes"
+if "favorite_tools" not in st.session_state:
+    st.session_state.favorite_tools = []
 
-col7, col8 = st.columns(3)[0:2]
-with col7:
-    if st.button("🃏 Quick Coping Cards", use_container_width=True):
-        st.session_state.active_tool = "quick_coping"
-with col8:
-    if st.button("🌳 Grounding Exercise", use_container_width=True):
-        st.session_state.active_tool = "grounding_exercise"
+# --- Display Favorite Tools ---
+if st.session_state.favorite_tools:
+    st.subheader("⭐ Favorites")
+    # Limit to 4 columns for favorites
+    fav_cols = st.columns(min(len(st.session_state.favorite_tools), 4))
+    for i, tool_id in enumerate(st.session_state.favorite_tools):
+        with fav_cols[i % 4]:
+            if st.button(f"{tools[tool_id]['icon']} {tools[tool_id]['name']}", key=f"fav_{tool_id}", use_container_width=True):
+                st.session_state.active_tool = tool_id
+
+                # Add to recents when a favorite is clicked
+                if tool_id not in st.session_state.recent_tools:
+                    st.session_state.recent_tools.insert(0, tool_id)
+                    # Keep recents list to a max of 4
+                    if len(st.session_state.recent_tools) > 4:
+                        st.session_state.recent_tools.pop()
+                st.rerun()
+
+# --- Display Recent Tools ---
+if st.session_state.recent_tools:
+    st.subheader("🕓 Recents")
+    # Limit to 4 columns for recents
+    rec_cols = st.columns(min(len(st.session_state.recent_tools), 4))
+    for i, tool_id in enumerate(st.session_state.recent_tools):
+        with rec_cols[i % 4]:
+            if st.button(f"{tools[tool_id]['icon']} {tools[tool_id]['name']}", key=f"rec_{tool_id}", use_container_width=True):
+                st.session_state.active_tool = tool_id
+                st.rerun()
+
+# --- Display All Tools with Favorite Toggles ---
+st.subheader("All Tools")
+# Use 2 columns for the main tool list
+cols = st.columns(2)
+for i, (tool_id, tool_info) in enumerate(tools.items()):
+    with cols[i % 2]:
+        # Create a layout with the main button and a smaller favorite button
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            if st.button(f"{tool_info['icon']} {tool_info['name']}", use_container_width=True, key=f"tool_{tool_id}"):
+                st.session_state.active_tool = tool_id
+                # Add to recents when a tool is clicked
+                if tool_id not in st.session_state.recent_tools:
+                    st.session_state.recent_tools.insert(0, tool_id)
+                    # Keep recents list to a max of 4
+                    if len(st.session_state.recent_tools) > 4:
+                        st.session_state.recent_tools.pop()
+                st.rerun()
+
+        with col2:
+            # Check if the tool is already a favorite
+            is_favorited = tool_id in st.session_state.favorite_tools
+            # Use a star icon to indicate favorite status
+            if st.button("⭐" if is_favorited else "☆", key=f"fav_toggle_{tool_id}", use_container_width=True):
+                if is_favorited:
+                    st.session_state.favorite_tools.remove(tool_id)
+                else:
+                    st.session_state.favorite_tools.append(tool_id)
+                st.rerun()
 
 st.markdown("---")
 
@@ -313,8 +313,21 @@ st.markdown("---")
 if st.session_state.active_tool == "focus":
     st.header("🧘 Focus Session")
     render_focus_session()
-    # st.session_state.show_focus_session = True
-    
+
+elif st.session_state.active_tool == "pomodoro":
+    render_pomodoro_focus()
+
+elif st.session_state.active_tool == "pmr":
+    render_pmr_guide()
+
+elif st.session_state.active_tool == "values":
+    render_values_clarification()
+
+elif st.session_state.active_tool == "therapy":
+    render_therapy_tool()
+
+elif st.session_state.active_tool == "playlist":
+    render_playlist_generator()
 
 elif st.session_state.active_tool == "mood_dashboard":
     render_mood_dashboard()
@@ -437,8 +450,26 @@ elif st.session_state.active_tool == "mental_check":
     if st.session_state.mood_entry_status:
         st.info(st.session_state.mood_entry_status)
 
+elif st.session_state.active_tool == "thought_reframing":
+    render_thought_reframing()
+
+elif st.session_state.active_tool == "sleep_hygiene":
+    render_sleep_hygiene_toolkit()
+
+elif st.session_state.active_tool == "medication_reminder":
+    render_medication_reminder()
+
+elif st.session_state.active_tool == "self_compassion":
+    render_self_compassion_tool()
+
+elif st.session_state.active_tool == "crisis_plan":
+    render_crisis_action_plan()
+
 elif st.session_state.active_tool == "knowledge":
     st.header("📚 Resources & Knowledge Base")
+
+    if "link_to_share" not in st.session_state:
+        st.session_state.link_to_share = None
 
     all_tags = sorted(list(set(tag for data in mental_health_resources_full.values() for tag in data.get("tags", []))))
     selected_tags = st.multiselect("Filter by Tags:", options=all_tags, placeholder="Select tags to filter resources")
@@ -470,16 +501,38 @@ elif st.session_state.active_tool == "knowledge":
                 st.markdown("Tags: " + ", ".join([f"`{tag}`" for tag in data.get("tags", [])]))
 
                 for link in data['links']:
-                    st.markdown(f"**[{link['label']}]({link['url']})**")
-                    # Extract domain for context
-                    domain = link['url'].split('/')[2]
-                    st.caption(f"🔗 {domain}")
-                st.markdown("---")
+                    col1, col2 = st.columns([0.8, 0.2])
+                    with col1:
+                        st.markdown(f"**[{link['label']}]({link['url']})**")
+                        # Extract domain for context
+                        domain = link['url'].split('/')[2]
+                        st.caption(f"🔗 {domain}")
+                    with col2:
+                        if st.button("Share", key=f"share_{link['url']}"):
+                            st.session_state.link_to_share = link['url']
+
+    if st.session_state.link_to_share:
+        st.text_input("Copy this link:", value=st.session_state.link_to_share, key="share_input")
+        if st.button("Close", key="close_share"):
+            st.session_state.link_to_share = None
 
 elif st.session_state.active_tool == "crisis":
     st.header("☎️ Crisis Support")
-    for r in GLOBAL_RESOURCES:
-        st.markdown(f"**{r['name']}**: {r['desc']} [Visit Website]({r['url']})")
+    
+    search_query = st.text_input("Search for a specific resource or helpline:", "")
+    
+    st.subheader("Global Resources")
+    
+    filtered_global_resources = [
+        r for r in GLOBAL_RESOURCES
+        if search_query.lower() in r['name'].lower() or search_query.lower() in r['desc'].lower()
+    ]
+    
+    if not filtered_global_resources:
+        st.info("No global resources found matching your search.")
+    else:
+        for r in filtered_global_resources:
+            st.markdown(f"**{r['name']}**: {r['desc']} [Visit Website]({r['url']})")
     
     st.info("""
     **What to expect when you call a helpline:**
@@ -506,8 +559,17 @@ elif st.session_state.active_tool == "crisis":
 
     if selected_country and selected_country in country_helplines:
         st.markdown(f"**Helplines for {selected_country} ({country_names.get(selected_country, 'Unknown')}):**")
-        for line in country_helplines[selected_country]:
-            st.markdown(f"• {line}")
+        
+        filtered_helplines = [
+            line for line in country_helplines[selected_country]
+            if search_query.lower() in line.lower()
+        ]
+        
+        if not filtered_helplines:
+            st.info(f"No helplines found matching your search for {selected_country}.")
+        else:
+            for line in filtered_helplines:
+                st.markdown(f"• {line}")
     else:
         st.markdown(f"[Find help worldwide via IASP]({IASP_LINK})")
 
@@ -555,34 +617,50 @@ elif st.session_state.active_tool == "grounding_exercise":
         st.session_state.grounding_responses = {
             "see": [], "feel": [], "hear": [], "smell": [], "taste": []
         }
+    if "selected_audio" not in st.session_state:
+        st.session_state.selected_audio = "None"
+
+    audio_files = ["None", "forest_ambience.wav", "gentle_piano.wav", "ocean_waves.wav", "rain_sounds.wav", "silent_soft_music.wav", "tibetan_bowls.wav"]
+    st.session_state.selected_audio = st.selectbox("Select background audio:", options=audio_files, index=audio_files.index(st.session_state.selected_audio))
+
+    if st.session_state.selected_audio != "None":
+        try:
+            st.audio(f"audio_files/{st.session_state.selected_audio}")
+        except FileNotFoundError:
+            st.warning(f"Audio file {st.session_state.selected_audio} not found.")
 
     steps = [
-        {"prompt": "5 things you can SEE", "key": "see", "count": 5},
-        {"prompt": "4 things you can FEEL", "key": "feel", "count": 4},
-        {"prompt": "3 things you can HEAR", "key": "hear", "count": 3},
-        {"prompt": "2 things you can SMELL", "key": "smell", "count": 2},
-        {"prompt": "1 thing you can TASTE", "key": "taste", "count": 1}
+        {"prompt": "5 things you can SEE", "key": "see", "count": 5, "icon": "👀"},
+        {"prompt": "4 things you can FEEL", "key": "feel", "count": 4, "icon": "🖐️"},
+        {"prompt": "3 things you can HEAR", "key": "hear", "count": 3, "icon": "👂"},
+        {"prompt": "2 things you can SMELL", "key": "smell", "count": 2, "icon": "👃"},
+        {"prompt": "1 thing you can TASTE", "key": "taste", "count": 1, "icon": "👅"}
     ]
+    
+    step_icons = {step['key']: step['icon'] for step in steps}
+
+    progress = st.session_state.grounding_step / len(steps)
+    st.progress(progress)
 
     if st.session_state.grounding_step < len(steps):
         current_step_info = steps[st.session_state.grounding_step]
-        st.subheader(f"Step {st.session_state.grounding_step + 1}: {current_step_info['prompt']}")
-        st.write(f"List {current_step_info['count']} items, one per line.")
-
-        # Use a unique key for the text area to prevent issues on re-renders
-        input_key = f"grounding_input_{current_step_info['key']}"
-        user_input = st.text_area("Your observations:", key=input_key, height=150)
+        st.subheader(f"Step {st.session_state.grounding_step + 1}: {current_step_info['icon']} {current_step_info['prompt']}")
+        
+        responses = []
+        for i in range(current_step_info["count"]):
+            response = st.text_input(f"Item {i+1}", key=f"grounding_input_{current_step_info['key']}_{i}")
+            responses.append(response)
 
         col_next, col_reset = st.columns([1, 1])
         with col_next:
             if st.button("Next Step", use_container_width=True):
-                responses = [item.strip() for item in user_input.split('\n') if item.strip()]
-                if len(responses) < current_step_info['count']:
+                # Filter out empty responses
+                filled_responses = [r.strip() for r in responses if r.strip()]
+                if len(filled_responses) < current_step_info['count']:
                     st.warning(f"Please list at least {current_step_info['count']} items.")
                 else:
-                    st.session_state.grounding_responses[current_step_info['key']] = responses
+                    st.session_state.grounding_responses[current_step_info['key']] = filled_responses
                     st.session_state.grounding_step += 1
-                    # Clear the text area for the next step
                     st.rerun()
         with col_reset:
             if st.button("Start Over", use_container_width=True):
@@ -592,11 +670,12 @@ elif st.session_state.active_tool == "grounding_exercise":
                 }
                 st.rerun()
     else:
-        st.subheader("Grounding Exercise Complete!")
+        st.subheader("🎉 Grounding Exercise Complete!")
         st.success("You've completed the 5-4-3-2-1 grounding exercise. Take a deep breath.")
+
         st.markdown("### Your Responses:")
         for key, value in st.session_state.grounding_responses.items():
-            st.markdown(f"**{key.capitalize()}:**")
+            st.markdown(f"**{step_icons[key]} {key.capitalize()}:**")
             for item in value:
                 st.write(f"- {item}")
         
